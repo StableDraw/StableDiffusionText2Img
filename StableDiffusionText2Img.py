@@ -3,6 +3,7 @@ import cv2
 import torch
 import numpy as np
 import safetensors.torch
+from os.path import isfile
 from omegaconf import OmegaConf
 from PIL import Image
 from tqdm import tqdm, trange
@@ -11,6 +12,7 @@ from pytorch_lightning import seed_everything
 from torch import autocast
 from contextlib import nullcontext
 from imwatermark import WatermarkEncoder
+from huggingface_hub import hf_hub_download
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
@@ -39,22 +41,22 @@ def load_model_from_config(config, ckpt, verbose = False):
     return model
 
 def Stable_diffusion_text_to_image(prompt, opt):
-    checkpoint_path = "weights\\"
+    checkpoint_path = "weights/"
     version_dict = {
-        "1.0-512-1-ema": ["1.0\\sd-v1-1-full-ema.ckpt", "v1"],
-        "1.0-512-1-nonema": ["1.0\\sd-v1-1-full-ema.ckpt", "v1"],
-        "1.0-512-2-ema": ["1.0\\sd-v1-2-full-ema.ckpt", "v1"],
-        "1.0-512-2-nonema": ["1.0\\sd-v1-2-full-ema.ckpt", "v1"],
-        "1.0-512-3-ema": ["1.0\\sd-v1-3-full-ema.ckpt", "v1"],
-        "1.0-512-3-nonema": ["1.0\\sd-v1-3-full-ema.ckpt", "v1"],
-        "1.0-512-4-ema": ["1.0\\sd-v1-4-full-ema.ckpt", "v1"],
-        "1.0-512-4-nonema": ["1.0\\sd-v1-4-full-ema.ckpt", "v1"],
-        "2.1-512-ema": ["2.1\\v2-1_512-ema-pruned.safetensors", "v2"],
-        "2.1-512-nonema": ["2.1\\v2-1_512-nonema-pruned.safetensors", "v2"],
-        "2.1-768-ema": ["2.1\\v2-1_768-ema-pruned.safetensors", "v2"],
-        "2.1-768-nonema": ["2.1\\v2-1_768-nonema-pruned.safetensors", "v2"]
+        "1.0-512-1-ema": ["1.0/sd-v1-1-full-ema.ckpt", "v1", "CompVis/stable-diffusion-v-1-1-original"],
+        "1.0-512-1-nonema": ["1.0/sd-v1-1.ckpt", "v1", "CompVis/stable-diffusion-v-1-1-original"],
+        "1.0-512-2-ema": ["1.0/sd-v1-2-full-ema.ckpt", "v1", "CompVis/stable-diffusion-v-1-2-original"],
+        "1.0-512-2-nonema": ["1.0/sd-v1-2.ckpt", "v1", "CompVis/stable-diffusion-v-1-2-original"],
+        "1.0-512-3-ema": ["1.0/sd-v1-3-full-ema.ckpt", "v1", "CompVis/stable-diffusion-v-1-3-original"],
+        "1.0-512-3-nonema": ["1.0/sd-v1-3.ckpt", "v1", "CompVis/stable-diffusion-v-1-3-original"],
+        "1.0-512-4-ema": ["1.0/sd-v1-4-full-ema.ckpt", "v1", "CompVis/stable-diffusion-v-1-4-original"],
+        "1.0-512-4-nonema": ["1.0/sd-v1-4.ckpt", "v1", "CompVis/stable-diffusion-v-1-4-original"],
+        "2.1-512-ema": ["2.1/v2-1_512-ema-pruned.safetensors", "v2", "stabilityai/stable-diffusion-2-1-base"],
+        "2.1-512-nonema": ["2.1/v2-1_512-nonema-pruned.safetensors", "v2", "stabilityai/stable-diffusion-2-1-base"],
+        "2.1-768-ema": ["2.1/v2-1_768-ema-pruned.safetensors", "v2", "stabilityai/stable-diffusion-2-1-base"],
+        "2.1-768-nonema": ["2.1/v2-1_768-nonema-pruned.safetensors", "v2", "stabilityai/stable-diffusion-2-1-base"]
         }
-    config_path = "configs\\"
+    config_path = "configs/"
     if opt["use_custom_res"] == False:
         w = 512
         h = 512
@@ -81,6 +83,8 @@ def Stable_diffusion_text_to_image(prompt, opt):
     w //= f
     seed_everything(opt["seed"])
     config = OmegaConf.load(config_path + version_dict[opt["version"]][1] + сfg_type)
+    if not isfile("weights/" + version_dict[opt["version"]][0]):
+        hf_hub_download(repo_id = version_dict[opt["version"]][2], filename = version_dict[opt["version"]][0][4:], local_dir = "weights/" + version_dict[opt["version"]][0][0:3], local_dir_use_symlinks = False)
     model = load_model_from_config(config, checkpoint_path + version_dict[opt["version"]][0], verbose = opt["verbose"])
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
